@@ -105,6 +105,7 @@ a{color:inherit}
 <label><input id="vwap-toggle" type="checkbox" checked>VWAP</label>
 <label><input id="rsi-toggle" type="checkbox" checked>RSI</label>
 <label><input id="cci-toggle" type="checkbox" checked>CCI</label>
+<label title="Fibonacci Golden Wave © fluxchart · MPL 2.0"><input id="fibonacci-toggle" type="checkbox" checked>Fibonacci</label>
 </div>
 
 <div class="grid">
@@ -143,6 +144,7 @@ a{color:inherit}
 <script src="cci.js"></script>
 <script src="vwap.js"></script>
 <script src="ict-concepts.js"></script>
+<script src="fibonacci.js"></script>
 <script>
 const pairs = [['1w','4h'], ['1d','1h'], ['4h','15m'], ['1h','5m']]
 const extendedIntervals = {'1w':['1d'],'1d':['4h','1h'],'4h':['1h','30m'],'1h':['30m']}
@@ -158,6 +160,7 @@ const updated = document.querySelector('#updated')
 const vwapToggle = document.querySelector('#vwap-toggle')
 const ictToggle = document.querySelector('#ict-toggle')
 const cciToggle = document.querySelector('#cci-toggle')
+const fibonacciToggle = document.querySelector('#fibonacci-toggle')
 const rsiToggle = document.querySelector('#rsi-toggle')
 const chartExpand = document.querySelector('#chart-expand')
 const orderBlockToggle = document.querySelector('#order-block')
@@ -361,9 +364,11 @@ function draw(panel) {
     return
   }
   const vwap = panel === panels[0] && vwapToggle.checked ? panel.vwap ?? [] : []
+  const fibonacci = fibonacciToggle.checked ? panel.fibonacci ?? [] : []
   const averages = [
     ...movingAverages.flatMap(series => series.values),
-    ...vwap.filter(Boolean).map(point => point.value)
+    ...vwap.filter(Boolean).map(point => point.value),
+    ...fibonacci.flatMap(point => [point.upper,point.lower])
   ].filter(value => value !== null)
   const floor = Math.min(previous?.low ?? Infinity,...rows.map(row => row.low),...averages)
   const candleCeiling = Math.max(previous?.high ?? -Infinity,...rows.map(row => row.high))
@@ -395,6 +400,7 @@ function draw(panel) {
     if (zones?.length) drawOrderBlocks(ctx,zones,rows,plot,step,y,labels[interval],formatVolume)
   }
   if (ictToggle.checked) drawIctConcepts(ctx,panel.ict,rows,plot,step,y)
+  if (fibonacci.length) drawFibonacci(ctx,fibonacci,x,y)
   for (let i=0; i<=5; i++) {
     const value = low + (high-low)*i/5
     const line = y(value)
@@ -621,6 +627,7 @@ async function load(reset = false) {
       panel.cci = []
       panel.movingAverages = []
       panel.vwap = []
+      panel.fibonacci = []
       panel.hover = null
       panel.previous = null
       panel.orderBlocks = []
@@ -661,6 +668,7 @@ async function load(reset = false) {
     panels[0].oscillators = calculateOscillators(left,panels[0].rows.length)
     panels[0].cci = calculateCci(left,panels[0].rows.length)
     panels[0].movingAverages = calculateMovingAverages(left,panels[0].rows.length)
+    panels[0].fibonacci = calculateFibonacci(left,panels[0].rows.length)
     panels[0].vwap = calculateSessionVwap(left,panels[0].rows.length)
     panels[0].priorCandle = left.at(-candleCount-1)
     if (intervals[0] === '1d') renderDaily(panels[0].rows)
@@ -668,6 +676,7 @@ async function load(reset = false) {
     panels[1].oscillators = calculateOscillators(rightWithPrior,right.length)
     panels[1].cci = calculateCci(rightWithPrior,right.length)
     panels[1].movingAverages = calculateMovingAverages(rightWithPrior,right.length)
+    panels[1].fibonacci = calculateFibonacci(rightWithPrior,right.length)
     panels[1].priorCandle = rightWithPrior.findLast(candle => candle.time < previous.time)
     updateCountdown()
     panels[1].previous = previous
@@ -793,6 +802,7 @@ ictToggle.addEventListener('change',() => {
   if (ictToggle.checked) load()
 })
 cciToggle.addEventListener('change',() => panels.forEach(drawCci))
+fibonacciToggle.addEventListener('change',() => panels.forEach(draw))
 rsiToggle.addEventListener('change',() => panels.forEach(drawOscillators))
 chartExpand.addEventListener('click',() => {
   const expanded = document.body.classList.toggle('chart-expanded')
