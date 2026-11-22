@@ -20,7 +20,7 @@ main{padding-block:22px}
 .chart-settings label{display:inline-flex;align-items:center;gap:6px}
 .chart-settings input{width:62px;padding:4px 6px;font:inherit;color:#182538;border:1px solid var(--line);border-radius:5px}
 .chart-ratio{display:inline-flex;align-items:center;gap:6px}
-.daily{display:flex;flex-wrap:wrap;align-items:baseline;gap:5px 18px;margin:0 4px 12px;font-size:12px}
+.daily{display:flex;flex-wrap:wrap;align-items:baseline;gap:5px 18px;margin:6px 0 0;font-size:12px}
 .daily dl{display:flex;flex-wrap:wrap;gap:4px 16px;margin:0}
 .daily dl>div{display:flex;align-items:baseline;gap:4px;white-space:nowrap}
 .daily dt,.daily dd{margin:0}
@@ -96,7 +96,9 @@ a{color:inherit}
 <label><input id="vwap-toggle" type="checkbox" checked>VWAP</label>
 <label><input id="cci-toggle" type="checkbox" checked>CCI</label>
 </div>
-<section class="daily" aria-label="오늘 시세">
+
+<div class="grid">
+<article><div class="chart-head"><h2></h2><p class="readout"><span class="candle-date"></span><span class="next-candle" hidden></span><span class="candle-values" hidden><span class="candle-prices"></span> <span class="candle-change close-change"></span> <span class="candle-volume"></span> <span class="candle-change volume-change"></span></span></p><section class="daily" aria-label="오늘 시세">
 <dl>
 <div class="daily-volume"><dt>거래량</dt><dd><span id="day-volume">—</span><span class="daily-change" id="day-volume-change" aria-label="전일 대비 거래량 증감률"></span></dd></div>
 <div class="daily-close"><dt>종가</dt><dd><span id="day-close">—</span><span class="daily-change" id="day-close-change" aria-label="전일 대비 종가 증감률"></span></dd></div>
@@ -105,9 +107,7 @@ a{color:inherit}
 <div class="daily-open"><dt>시가</dt><dd id="day-open">—</dd></div>
 </dl>
 <div class="moving-averages" role="group" aria-label="단순이동평균선"></div>
-</section>
-<div class="grid">
-<article><div class="chart-head"><h2></h2><p class="readout"><span class="candle-date"></span><span class="next-candle" hidden></span><span class="candle-values" hidden><span class="candle-prices"></span> <span class="candle-change close-change"></span> <span class="candle-volume"></span> <span class="candle-change volume-change"></span></span></p><div class="reference"></div></div><canvas tabindex="0"></canvas>
+</section><div class="reference"></div></div><canvas tabindex="0"></canvas>
 <canvas class="oscillator" role="img" aria-label="왼쪽 차트 MACD (12, 26, 9)"></canvas>
 <canvas class="oscillator" role="img" aria-label="왼쪽 차트 RSI (14)"></canvas></article>
 <article><div class="chart-head"><h2></h2><p class="readout"><span class="candle-date"></span><span class="next-candle" hidden></span><span class="candle-values" hidden><span class="candle-prices"></span> <span class="candle-change close-change"></span> <span class="candle-volume"></span> <span class="candle-change volume-change"></span></span></p><div class="reference"></div></div><canvas tabindex="0"></canvas>
