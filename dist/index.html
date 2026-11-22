@@ -62,6 +62,8 @@ canvas{display:block;width:100%;height:clamp(320px,53vh,580px);outline-offset:-3
 .oscillator[hidden]{display:none}
 .cci-pane{height:118px;border-top:1px solid var(--line);cursor:default}
 .cci-pane[hidden]{display:none}
+.chart-expanded .oscillator,.chart-expanded .cci-pane{display:none}
+.chart-expanded article>canvas[tabindex]{height:clamp(480px,calc(100dvh - 210px),1000px)}
 footer{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;color:var(--muted);font-size:12px}
 a{color:inherit}
 @media(max-width:780px){main{padding-block:16px}}
@@ -90,7 +92,7 @@ a{color:inherit}
 <option value="2">4시간봉 / 15분봉</option>
 <option value="1">일봉 / 1시간봉</option>
 <option value="0">주봉 / 4시간봉</option>
-</select></div>
+</select><button id="chart-expand" type="button" aria-pressed="false">화면확대</button></div>
 <div class="indicators">
 <label><input id="order-block" type="checkbox" checked>Order Block</label>
 <label><input id="extended-order-block" type="checkbox">Order Block 확장</label>
@@ -152,6 +154,7 @@ const vwapToggle = document.querySelector('#vwap-toggle')
 const ictToggle = document.querySelector('#ict-toggle')
 const cciToggle = document.querySelector('#cci-toggle')
 const rsiToggle = document.querySelector('#rsi-toggle')
+const chartExpand = document.querySelector('#chart-expand')
 const orderBlockToggle = document.querySelector('#order-block')
 const extendedOrderBlockToggle = document.querySelector('#extended-order-block')
 const extendedOrderBlocks = new Map()
@@ -781,6 +784,16 @@ ictToggle.addEventListener('change',() => {
 })
 cciToggle.addEventListener('change',() => panels.forEach(drawCci))
 rsiToggle.addEventListener('change',() => panels.forEach(drawOscillators))
+chartExpand.addEventListener('click',() => {
+  const expanded = document.body.classList.toggle('chart-expanded')
+  chartExpand.setAttribute('aria-pressed',String(expanded))
+  chartExpand.textContent = expanded ? '전체지표' : '화면확대'
+  if (!expanded) {
+    rsiToggle.checked = true
+    cciToggle.checked = true
+  }
+  requestAnimationFrame(() => panels.forEach(draw))
+})
 leftCandleCount.addEventListener('change',() => {
   displayedCandleCount = readChartSetting(leftCandleCount,displayedCandleCount)
   leftCandleCount.value = displayedCandleCount
