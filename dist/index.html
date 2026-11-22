@@ -33,6 +33,10 @@ main{padding-block:22px}
 button,select{font:inherit;background:var(--card);color:#182538;border:1px solid var(--line);border-radius:8px;padding:9px 13px;cursor:pointer}
 .controls>select{margin-left:auto}
 .controls button,.controls select{flex:none;font-size:12px;height:34px;padding:0 8px;white-space:nowrap}
+#chart-expand{display:inline-flex;align-items:center;gap:5px;background:#e5efff;border-color:#bed2f2;color:#31557f}
+#chart-expand:hover{background:#d7e7ff;border-color:#94b7e6}
+#chart-expand[aria-pressed=true]{background:#e5e0fa;border-color:#c4b8ed;color:#594581}
+.expand-icon{font-size:12px;line-height:1}
 button[aria-pressed=true]{background:#e6f5f0;border-color:#6bb7a8;color:#075c50}
 button:hover,select:hover{border-color:var(--accent)}
 :focus-visible{outline:2px solid var(--accent);outline-offset:3px}
@@ -92,7 +96,7 @@ a{color:inherit}
 <option value="2">4시간봉 / 15분봉</option>
 <option value="1">일봉 / 1시간봉</option>
 <option value="0">주봉 / 4시간봉</option>
-</select><button id="chart-expand" type="button" aria-pressed="false">화면확대</button></div>
+</select><button id="chart-expand" type="button" aria-pressed="false"><span class="expand-icon" aria-hidden="true">🔍</span><span id="chart-expand-label">화면확대</span></button></div>
 <div class="indicators">
 <label><input id="order-block" type="checkbox" checked>Order Block</label>
 <label><input id="extended-order-block" type="checkbox">Order Block 확장</label>
@@ -787,7 +791,8 @@ rsiToggle.addEventListener('change',() => panels.forEach(drawOscillators))
 chartExpand.addEventListener('click',() => {
   const expanded = document.body.classList.toggle('chart-expanded')
   chartExpand.setAttribute('aria-pressed',String(expanded))
-  chartExpand.textContent = expanded ? '전체지표' : '화면확대'
+  chartExpand.querySelector('.expand-icon').textContent = expanded ? '📊' : '🔍'
+  document.querySelector('#chart-expand-label').textContent = expanded ? '전체지표' : '화면확대'
   if (!expanded) {
     rsiToggle.checked = true
     cciToggle.checked = true
