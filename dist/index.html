@@ -94,6 +94,7 @@ a{color:inherit}
 <div class="indicators">
 <label><input id="order-block" type="checkbox" checked>Order Block</label>
 <label><input id="extended-order-block" type="checkbox">Order Block 확장</label>
+<label title="ICT Concepts © LuxAlgo · CC BY-NC-SA 4.0 · JavaScript 변환"><input id="ict-toggle" type="checkbox" checked>ICT Concept</label>
 <label><input id="vwap-toggle" type="checkbox" checked>VWAP</label>
 <label><input id="rsi-toggle" type="checkbox" checked>RSI</label>
 <label><input id="cci-toggle" type="checkbox" checked>CCI</label>
@@ -134,6 +135,7 @@ a{color:inherit}
 <script src="oscillators.js"></script>
 <script src="cci.js"></script>
 <script src="vwap.js"></script>
+<script src="ict-concepts.js"></script>
 <script>
 const pairs = [['1w','4h'], ['1d','1h'], ['4h','15m'], ['1h','5m']]
 const extendedIntervals = {'1w':['1d'],'1d':['4h','1h'],'4h':['1h','30m'],'1h':['30m']}
@@ -147,6 +149,7 @@ const portraitPhoneLayout = matchMedia('(max-width:780px) and (orientation:portr
 const status = document.querySelector('#status')
 const updated = document.querySelector('#updated')
 const vwapToggle = document.querySelector('#vwap-toggle')
+const ictToggle = document.querySelector('#ict-toggle')
 const cciToggle = document.querySelector('#cci-toggle')
 const rsiToggle = document.querySelector('#rsi-toggle')
 const orderBlockToggle = document.querySelector('#order-block')
@@ -382,6 +385,7 @@ function draw(panel) {
     const zones = chart?.orderBlocks ?? extendedOrderBlocks.get(interval)?.zones
     if (zones?.length) drawOrderBlocks(ctx,zones,rows,plot,step,y,labels[interval],formatVolume)
   }
+  if (ictToggle.checked) drawIctConcepts(ctx,panel.ict,rows,plot,step,y)
   for (let i=0; i<=5; i++) {
     const value = low + (high-low)*i/5
     const line = y(value)
@@ -554,6 +558,30 @@ async function refreshExtendedOrderBlocks(interval, symbol, timestamp, request) 
   })
 }
 
+async function refreshIctConcepts(panel, symbol, request) {
+  const {rows,interval} = panel
+  const start = rows[0].time
+  let history = panel.ictHistory
+  if (history?.start !== start) {
+    const earlier = []
+    let endTime = start-1
+    let remaining = 3000-rows.length
+    while (remaining > 0) {
+      const limit = Math.min(1000,remaining)
+      const page = await fetchCandles(symbol,interval,request.signal,{limit:String(limit),endTime})
+      if (activeRequest !== request) return
+      earlier.unshift(...page)
+      remaining -= page.length
+      if (page.length < limit) break
+      endTime = page[0].time-1
+    }
+    history = {start,rows:earlier}
+    panel.ictHistory = history
+  }
+  if (activeRequest !== request) return
+  panel.ict = calculateIctConcepts([...history.rows,...rows])
+}
+
 async function load(reset = false) {
   if (activeRequest && !reset) return
   activeRequest?.abort()
@@ -584,6 +612,8 @@ async function load(reset = false) {
       panel.previous = null
       panel.orderBlocks = []
       panel.orderHistory = null
+      panel.ictHistory = null
+      panel.ict = null
       displayReference(panel,null)
       panel.message = '캔들 데이터를 불러오는 중…'
       draw(panel)
@@ -636,18 +666,19 @@ async function load(reset = false) {
     updated.dateTime = now.toISOString()
     updated.textContent = formatTimestamp(now)
     status.textContent = ''
-    if (orderBlockToggle.checked || extendedOrderBlockToggle.checked) {
+    if (orderBlockToggle.checked || extendedOrderBlockToggle.checked || ictToggle.checked) {
       const extra = extendedOrderBlockToggle.checked ? extendedIntervals[intervals[0]] : []
       const native = panels.filter(panel => orderBlockToggle.checked || extra.includes(panel.interval))
       const additional = extra.filter(interval => !intervals.includes(interval))
       const results = await Promise.allSettled([
         ...native.map(panel => refreshOrderBlocks(panel,symbol,asOf,request)),
-        ...additional.map(interval => refreshExtendedOrderBlocks(interval,symbol,asOf,request))
+        ...additional.map(interval => refreshExtendedOrderBlocks(interval,symbol,asOf,request)),
+        ...(ictToggle.checked ? panels.map(panel => refreshIctConcepts(panel,symbol,request)) : [])
       ])
       if (activeRequest !== request) return
       panels.forEach(draw)
-      if ((orderBlockToggle.checked || extendedOrderBlockToggle.checked) && results.some(result => result.status === 'rejected')) {
-        status.textContent = 'Order Block 데이터 조회 실패 · 자동으로 다시 시도합니다.'
+      if (results.some(result => result.status === 'rejected')) {
+        status.textContent = '지표 데이터 조회 실패 · 자동으로 다시 시도합니다.'
       }
     }
   } catch {
@@ -744,6 +775,10 @@ buttons.forEach(button => button.addEventListener('click',() => {
 }))
 menu.addEventListener('change',() => load(true))
 vwapToggle.addEventListener('change',() => draw(panels[0]))
+ictToggle.addEventListener('change',() => {
+  panels.forEach(draw)
+  if (ictToggle.checked) load()
+})
 cciToggle.addEventListener('change',() => panels.forEach(drawCci))
 rsiToggle.addEventListener('change',() => panels.forEach(drawOscillators))
 leftCandleCount.addEventListener('change',() => {
