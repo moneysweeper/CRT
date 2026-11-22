@@ -126,7 +126,7 @@ function drawOptimizedRsi(ctx, state, rows, plot, step, y) {
   ctx.beginPath()
   ctx.rect(plot.left,plot.top,plot.right-plot.left,plot.bottom-plot.top)
   ctx.clip()
-  ctx.font = '10px system-ui, sans-serif'
+  ctx.font = '11px system-ui, sans-serif'
   for (const marker of state.markers) {
     const index = Math.round((marker.time-first.time)/duration)
     if (index < 0 || index >= rows.length || rows[index].time !== marker.time) continue
