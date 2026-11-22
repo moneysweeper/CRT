@@ -106,6 +106,7 @@ a{color:inherit}
 <label><input id="rsi-toggle" type="checkbox" checked>RSI</label>
 <label><input id="cci-toggle" type="checkbox" checked>CCI</label>
 <label title="Fibonacci Golden Wave © fluxchart · MPL 2.0"><input id="fibonacci-toggle" type="checkbox" checked>Fibonacci</label>
+<label title="RSI (Kernel Optimized) © Flux Charts · CC BY-NC-SA 4.0"><input id="rsi-opt-toggle" type="checkbox" checked>RSI (Opt)</label>
 </div>
 
 <div class="grid">
@@ -145,6 +146,7 @@ a{color:inherit}
 <script src="vwap.js"></script>
 <script src="ict-concepts.js"></script>
 <script src="fibonacci.js"></script>
+<script src="rsi-optimized.js"></script>
 <script>
 const pairs = [['1w','4h'], ['1d','1h'], ['4h','15m'], ['1h','5m']]
 const extendedIntervals = {'1w':['1d'],'1d':['4h','1h'],'4h':['1h','30m'],'1h':['30m']}
@@ -161,6 +163,7 @@ const vwapToggle = document.querySelector('#vwap-toggle')
 const ictToggle = document.querySelector('#ict-toggle')
 const cciToggle = document.querySelector('#cci-toggle')
 const fibonacciToggle = document.querySelector('#fibonacci-toggle')
+const rsiOptToggle = document.querySelector('#rsi-opt-toggle')
 const rsiToggle = document.querySelector('#rsi-toggle')
 const chartExpand = document.querySelector('#chart-expand')
 const orderBlockToggle = document.querySelector('#order-block')
@@ -515,6 +518,7 @@ function draw(panel) {
   displayChange(panel.closeChange,relativeChange(candle.close,priorCandle?.close),true)
   displayChange(panel.volumeChange,relativeChange(candle.volume,priorCandle?.volume),true)
   panel.plot = {left:plot.left,step,showPriceLabels}
+  if (rsiOptToggle.checked) drawOptimizedRsi(ctx,panel.optimizedRsi,rows,plot,step,y)
   drawOscillators(panel)
 }
 
@@ -530,14 +534,14 @@ function displayReference(panel, previous) {
   }
 }
 
-async function fetchCandles(symbol, interval, signal, range = {}) {
+async function fetchCandles(symbol, interval, signal, range = {}, allowEmpty = false) {
   const query = new URLSearchParams({symbol,interval,limit:'100',...range})
   const response = await fetch('https://data-api.binance.vision/api/v3/klines?'+query,{
     signal, cache:'no-store'
   })
   if (!response.ok) throw Error('HTTP '+response.status)
   const data = await response.json()
-  if (!Array.isArray(data) || !data.length) throw Error('Missing candles')
+  if (!Array.isArray(data) || (!data.length && !allowEmpty)) throw Error('Missing candles')
   return data.map(row => {
     const [time,open,high,low,close,volume,closeTime] = row.map(Number)
     return {time,open,high,low,close,volume,closeTime}
@@ -577,28 +581,27 @@ async function refreshExtendedOrderBlocks(interval, symbol, timestamp, request) 
   })
 }
 
-async function refreshIctConcepts(panel, symbol, request) {
+async function refreshPriceOverlays(panel, symbol, timestamp, request) {
   const {rows,interval} = panel
   const start = rows[0].time
+  const target = (rsiOptToggle.checked ? 5000 : 3000)-rows.length
   let history = panel.ictHistory
   if (history?.start !== start) {
-    const earlier = []
-    let endTime = start-1
-    let remaining = 3000-rows.length
-    while (remaining > 0) {
-      const limit = Math.min(1000,remaining)
-      const page = await fetchCandles(symbol,interval,request.signal,{limit:String(limit),endTime})
-      if (activeRequest !== request) return
-      earlier.unshift(...page)
-      remaining -= page.length
-      if (page.length < limit) break
-      endTime = page[0].time-1
-    }
-    history = {start,rows:earlier}
+    history = {start,rows:[],hasMore:true}
     panel.ictHistory = history
   }
+  while (history.hasMore && history.rows.length < target) {
+    const limit = Math.min(1000,target-history.rows.length)
+    const endTime = (history.rows[0]?.time ?? start)-1
+    const page = await fetchCandles(symbol,interval,request.signal,{limit:String(limit),endTime},true)
+    if (activeRequest !== request) return
+    history.rows.unshift(...page)
+    history.hasMore = page.length === limit
+  }
   if (activeRequest !== request) return
-  panel.ict = calculateIctConcepts([...history.rows,...rows])
+  const all = [...history.rows,...rows]
+  if (ictToggle.checked) panel.ict = calculateIctConcepts(all)
+  if (rsiOptToggle.checked) panel.optimizedRsi = calculateOptimizedRsi(all,timestamp)
 }
 
 async function load(reset = false) {
@@ -634,6 +637,7 @@ async function load(reset = false) {
       panel.orderHistory = null
       panel.ictHistory = null
       panel.ict = null
+      panel.optimizedRsi = null
       displayReference(panel,null)
       panel.message = '캔들 데이터를 불러오는 중…'
       draw(panel)
@@ -688,14 +692,14 @@ async function load(reset = false) {
     updated.dateTime = now.toISOString()
     updated.textContent = formatTimestamp(now)
     status.textContent = ''
-    if (orderBlockToggle.checked || extendedOrderBlockToggle.checked || ictToggle.checked) {
+    if (orderBlockToggle.checked || extendedOrderBlockToggle.checked || ictToggle.checked || rsiOptToggle.checked) {
       const extra = extendedOrderBlockToggle.checked ? extendedIntervals[intervals[0]] : []
       const native = panels.filter(panel => orderBlockToggle.checked || extra.includes(panel.interval))
       const additional = extra.filter(interval => !intervals.includes(interval))
       const results = await Promise.allSettled([
         ...native.map(panel => refreshOrderBlocks(panel,symbol,asOf,request)),
         ...additional.map(interval => refreshExtendedOrderBlocks(interval,symbol,asOf,request)),
-        ...(ictToggle.checked ? panels.map(panel => refreshIctConcepts(panel,symbol,request)) : [])
+        ...(ictToggle.checked || rsiOptToggle.checked ? panels.map(panel => refreshPriceOverlays(panel,symbol,asOf,request)) : [])
       ])
       if (activeRequest !== request) return
       panels.forEach(draw)
@@ -803,6 +807,10 @@ ictToggle.addEventListener('change',() => {
 })
 cciToggle.addEventListener('change',() => panels.forEach(drawCci))
 fibonacciToggle.addEventListener('change',() => panels.forEach(draw))
+rsiOptToggle.addEventListener('change',() => {
+  panels.forEach(draw)
+  if (rsiOptToggle.checked) load()
+})
 rsiToggle.addEventListener('change',() => panels.forEach(drawOscillators))
 chartExpand.addEventListener('click',() => {
   const expanded = document.body.classList.toggle('chart-expanded')
