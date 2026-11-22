@@ -59,6 +59,7 @@ h2{margin:0;font-size:16px;font-weight:650}
 .next-candle{color:var(--accent);font-weight:600;white-space:nowrap}
 canvas{display:block;width:100%;height:clamp(320px,53vh,580px);outline-offset:-3px;cursor:crosshair}
 .oscillator{height:118px;border-top:1px solid var(--line);cursor:default}
+.oscillator[hidden]{display:none}
 .cci-pane{height:118px;border-top:1px solid var(--line);cursor:default}
 .cci-pane[hidden]{display:none}
 footer{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;color:var(--muted);font-size:12px}
@@ -94,6 +95,7 @@ a{color:inherit}
 <label><input id="order-block" type="checkbox" checked>Order Block</label>
 <label><input id="extended-order-block" type="checkbox">Order Block 확장</label>
 <label><input id="vwap-toggle" type="checkbox" checked>VWAP</label>
+<label><input id="rsi-toggle" type="checkbox" checked>RSI</label>
 <label><input id="cci-toggle" type="checkbox" checked>CCI</label>
 </div>
 
@@ -146,6 +148,7 @@ const status = document.querySelector('#status')
 const updated = document.querySelector('#updated')
 const vwapToggle = document.querySelector('#vwap-toggle')
 const cciToggle = document.querySelector('#cci-toggle')
+const rsiToggle = document.querySelector('#rsi-toggle')
 const orderBlockToggle = document.querySelector('#order-block')
 const extendedOrderBlockToggle = document.querySelector('#extended-order-block')
 const extendedOrderBlocks = new Map()
@@ -742,6 +745,7 @@ buttons.forEach(button => button.addEventListener('click',() => {
 menu.addEventListener('change',() => load(true))
 vwapToggle.addEventListener('change',() => draw(panels[0]))
 cciToggle.addEventListener('change',() => panels.forEach(drawCci))
+rsiToggle.addEventListener('change',() => panels.forEach(drawOscillators))
 leftCandleCount.addEventListener('change',() => {
   displayedCandleCount = readChartSetting(leftCandleCount,displayedCandleCount)
   leftCandleCount.value = displayedCandleCount
@@ -783,4 +787,3 @@ load(true)
 </script>
 </body>
 </html>
-
