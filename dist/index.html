@@ -338,9 +338,10 @@ function drawMovingAverages(ctx, series, x, y) {
 function draw(panel) {
   const {canvas, rows, hover, dateLabel, readout, previous, movingAverages} = panel
   const showPriceLabels = panel === panels[0]
+  const showVolume = !document.body.classList.contains('chart-expanded')
   const width = canvas.clientWidth
   const height = canvas.clientHeight
-  const plot = {left:0, right:width-(showPriceLabels ? 78 : 0), top:20, bottom:Math.round(height*0.71)}
+  const plot = {left:0, right:width-(showPriceLabels ? 78 : 0), top:20, bottom:showVolume ? Math.round(height*0.71) : height-34}
   const volumeTop = plot.bottom+29
   const volumeBottom = height-34
   const plotWidth = plot.right-plot.left
@@ -405,17 +406,19 @@ function draw(panel) {
     }
   }
   ctx.fillStyle = palette.axis
-  ctx.fillRect(plot.left,volumeTop-1,plotWidth,1)
+  if (showVolume) ctx.fillRect(plot.left,volumeTop-1,plotWidth,1)
   ctx.fillRect(plot.left,volumeBottom,width-plot.left,1)
   if (showPriceLabels) ctx.fillRect(plot.right,0,1,volumeBottom)
-  ctx.fillStyle = palette.label
-  ctx.fillText('거래량 ('+coin+')',plot.left,volumeTop-6)
-  if (showPriceLabels) {
-    ctx.fillText(formatVolume(maxVolume),plot.right+7,volumeTop+4,width-plot.right-10)
-  } else {
-    ctx.textAlign = 'right'
-    ctx.fillText(formatVolume(maxVolume),plot.right-3,volumeTop-6,Math.max(20,plotWidth/2))
-    ctx.textAlign = 'start'
+  if (showVolume) {
+    ctx.fillStyle = palette.label
+    ctx.fillText('거래량 ('+coin+')',plot.left,volumeTop-6)
+    if (showPriceLabels) {
+      ctx.fillText(formatVolume(maxVolume),plot.right+7,volumeTop+4,width-plot.right-10)
+    } else {
+      ctx.textAlign = 'right'
+      ctx.fillText(formatVolume(maxVolume),plot.right-3,volumeTop-6,Math.max(20,plotWidth/2))
+      ctx.textAlign = 'start'
+    }
   }
 
   const labelCount = Math.min(rows.length,width > 540 ? 5 : width > 375 ? 3 : 2)
@@ -440,9 +443,11 @@ function draw(panel) {
     ctx.fillStyle = rising ? palette.up : palette.down
     ctx.fillRect(mid-0.5,y(high),1,Math.max(1,y(low)-y(high)))
     ctx.fillRect(mid-body/2,y(Math.max(open,close)),body,Math.max(1,Math.abs(y(open)-y(close))))
-    const volumeHeight = maxVolume > 0 ? volume/maxVolume*(volumeBottom-volumeTop) : 0
-    ctx.fillStyle = rising ? palette.upVolume : palette.downVolume
-    ctx.fillRect(mid-body/2,volumeBottom-volumeHeight,body,volumeHeight)
+    if (showVolume) {
+      const volumeHeight = maxVolume > 0 ? volume/maxVolume*(volumeBottom-volumeTop) : 0
+      ctx.fillStyle = rising ? palette.upVolume : palette.downVolume
+      ctx.fillRect(mid-body/2,volumeBottom-volumeHeight,body,volumeHeight)
+    }
   })
   drawMovingAverages(ctx,movingAverages,x,y)
   if (vwap.length) drawSessionVwap(ctx,vwap,x,y)
