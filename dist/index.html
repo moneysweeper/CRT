@@ -1,0 +1,784 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="한 종목의 두 시간봉을 비교하는 암호화폐 캔들 차트">
+<title>CRT 차트</title>
+<style>
+:root{color-scheme:light;--bg:#fff;--card:#fff;--line:#dce4ec;--muted:#506075;--accent:#087966;--ref-high:#c52636;--ref-low:#2358ac}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:#182538;font:15px/1.5 Inter,system-ui,sans-serif}
+.wrap{width:min(1500px,calc(100% - 48px));margin:auto}
+main{padding-block:22px}
+.controls{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;overflow-x:auto;padding:4px}
+.symbols{display:flex;flex:none;gap:5px}
+.indicators{display:flex;flex-wrap:wrap;gap:6px 16px;margin:0 4px 12px;font-size:12px;color:var(--muted)}
+.indicators label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.indicators input{margin:0;accent-color:var(--accent)}
+.chart-settings{display:flex;flex-wrap:wrap;gap:6px 16px;margin:0 4px 12px;font-size:12px;color:var(--muted)}
+.chart-settings label{display:inline-flex;align-items:center;gap:6px}
+.chart-settings input{width:62px;padding:4px 6px;font:inherit;color:#182538;border:1px solid var(--line);border-radius:5px}
+.chart-ratio{display:inline-flex;align-items:center;gap:6px}
+.daily{display:flex;flex-wrap:wrap;align-items:baseline;gap:5px 18px;margin:0 4px 12px;font-size:12px}
+.daily dl{display:flex;flex-wrap:wrap;gap:4px 16px;margin:0}
+.daily dl>div{display:flex;align-items:baseline;gap:4px;white-space:nowrap}
+.daily dt,.daily dd{margin:0}
+.daily dd{font-variant-numeric:tabular-nums}
+.daily-volume{color:#6840a4}.daily-open{color:#39475b}.daily-high{color:var(--ref-high)}.daily-low{color:var(--ref-low)}.daily-close{color:#087966}
+.daily-change{margin-left:5px;color:var(--muted);font-size:11px}
+.daily-change:empty{display:none}
+.daily-change[data-direction=up],.candle-change[data-direction=up]{color:#087966}
+.daily-change[data-direction=down],.candle-change[data-direction=down]{color:#c52636}
+button,select{font:inherit;background:var(--card);color:#182538;border:1px solid var(--line);border-radius:8px;padding:9px 13px;cursor:pointer}
+.controls button,.controls select{flex:none;font-size:12px;height:34px;padding:0 8px;white-space:nowrap}
+button[aria-pressed=true]{background:#e6f5f0;border-color:#6bb7a8;color:#075c50}
+button:hover,select:hover{border-color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.reference{display:flex;gap:10px 18px;flex-wrap:wrap;font-size:12px;color:var(--muted);min-height:18px;margin-top:5px}
+.reference span::before{display:inline-block;width:14px;margin-right:6px;vertical-align:middle;content:"";border-top:2px solid var(--ref-high)}
+.reference span:last-child::before{border-top-color:var(--ref-low)}
+.moving-averages{display:flex;flex-wrap:wrap;gap:3px 12px;font-size:11px}
+.moving-averages button{font:inherit;white-space:nowrap;background:transparent;border:0;border-radius:3px;padding:3px;cursor:pointer}
+.moving-averages button::before{content:"";display:inline-block;width:12px;margin-right:4px;border-top:var(--ma-width,2px) solid currentColor;vertical-align:middle}
+.ma-dialog{width:min(390px,calc(100% - 28px));padding:20px;border:1px solid var(--line);border-radius:10px;color:#182538;background:white}
+.ma-dialog::backdrop{background:#18253855}
+.ma-dialog h2{margin:0 0 16px}
+.ma-row{display:grid;grid-template-columns:1fr 76px 100px;align-items:center;gap:10px;margin:12px 0}
+.ma-row label{font-size:12px;display:grid;gap:4px}
+.ma-row input{width:100%;height:32px}
+.ma-row input[type=number]{font:inherit;padding:4px;border:1px solid var(--line);border-radius:4px}
+.ma-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.grid{display:grid;grid-template-columns:minmax(0,var(--left-chart,1fr)) minmax(0,var(--right-chart,1fr));gap:14px}
+article{min-width:0;background:var(--card);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.chart-head{padding:12px 14px 10px;border-bottom:1px solid var(--line)}
+h2{margin:0;font-size:16px;font-weight:650}
+.readout{font:12px/1.5 Inter,system-ui,sans-serif;font-variant-numeric:tabular-nums;color:var(--muted);margin:5px 0 0;min-height:36px;white-space:pre-line}
+.candle-values:not([hidden]){display:block}
+.next-candle{color:var(--accent);font-weight:600;white-space:nowrap}
+canvas{display:block;width:100%;height:clamp(320px,53vh,580px);outline-offset:-3px;cursor:crosshair}
+.oscillator{height:118px;border-top:1px solid var(--line);cursor:default}
+.cci-pane{height:118px;border-top:1px solid var(--line);cursor:default}
+.cci-pane[hidden]{display:none}
+footer{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;color:var(--muted);font-size:12px}
+a{color:inherit}
+@media(max-width:780px){.wrap{width:calc(100% - 28px)}main{padding-block:16px}}
+@media(max-width:780px) and (orientation:portrait) and (pointer:coarse){.grid{grid-template-columns:1fr}}
+@media(max-width:460px){.controls{gap:4px}.symbols{gap:3px}.controls button,.controls select{font-size:10px;padding-inline:4px}}
+@media(max-width:370px){.controls button,.controls select{font-size:9px;padding-inline:2px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+<div class="controls">
+<div class="symbols" role="group" aria-label="종목">
+<button data-coin="BTC" aria-pressed="true">BTC/USDT</button><button data-coin="ETH" aria-pressed="false">ETH/USDT</button><button data-coin="SOL" aria-pressed="false">SOL/USDT</button><button data-coin="ADA" aria-pressed="false">ADA/USDT</button><button data-coin="NEAR" aria-pressed="false">NEAR/USDT</button>
+</div>
+<select id="pair" aria-label="시간봉 조합 · 왼쪽 / 오른쪽">
+<option value="3" selected>1시간봉 / 5분봉</option>
+<option value="2">4시간봉 / 15분봉</option>
+<option value="1">일봉 / 1시간봉</option>
+<option value="0">주봉 / 4시간봉</option>
+</select></div>
+<div class="indicators">
+<label><input id="order-block" type="checkbox" checked>Order Block</label>
+<label><input id="extended-order-block" type="checkbox">Order Block 확장</label>
+<label><input id="vwap-toggle" type="checkbox" checked>VWAP</label>
+<label><input id="cci-toggle" type="checkbox" checked>CCI</label>
+</div>
+<div class="chart-settings">
+<label>왼쪽 봉 개수 <input id="left-candle-count" type="number" min="2" max="500" step="1" value="100"></label>
+<div class="chart-ratio" role="group" aria-label="차트 비율 (왼쪽:오른쪽)">
+<span>차트 비율 (왼쪽:오른쪽)</span>
+<input id="left-chart-ratio" type="number" inputmode="numeric" min="20" max="80" step="1" value="70" aria-label="왼쪽 차트 너비 비율 (퍼센트)">
+<span aria-hidden="true">:</span>
+<input id="right-chart-ratio" type="number" inputmode="numeric" min="20" max="80" step="1" value="30" aria-label="오른쪽 차트 너비 비율 (퍼센트)">
+</div>
+</div>
+<section class="daily" aria-label="오늘 시세">
+<dl>
+<div class="daily-volume"><dt>거래량</dt><dd><span id="day-volume">—</span><span class="daily-change" id="day-volume-change" aria-label="전일 대비 거래량 증감률"></span></dd></div>
+<div class="daily-close"><dt>종가</dt><dd><span id="day-close">—</span><span class="daily-change" id="day-close-change" aria-label="전일 대비 종가 증감률"></span></dd></div>
+<div class="daily-high"><dt>고가</dt><dd id="day-high">—</dd></div>
+<div class="daily-low"><dt>저가</dt><dd id="day-low">—</dd></div>
+<div class="daily-open"><dt>시가</dt><dd id="day-open">—</dd></div>
+</dl>
+<div class="moving-averages" role="group" aria-label="단순이동평균선"></div>
+</section>
+<div class="grid">
+<article><div class="chart-head"><h2></h2><p class="readout"><span class="candle-date"></span><span class="next-candle" hidden></span><span class="candle-values" hidden><span class="candle-prices"></span> <span class="candle-change close-change"></span> <span class="candle-volume"></span> <span class="candle-change volume-change"></span></span></p><div class="reference"></div></div><canvas tabindex="0"></canvas>
+<canvas class="oscillator" role="img" aria-label="왼쪽 차트 MACD (12, 26, 9)"></canvas>
+<canvas class="oscillator" role="img" aria-label="왼쪽 차트 RSI (14)"></canvas></article>
+<article><div class="chart-head"><h2></h2><p class="readout"><span class="candle-date"></span><span class="next-candle" hidden></span><span class="candle-values" hidden><span class="candle-prices"></span> <span class="candle-change close-change"></span> <span class="candle-volume"></span> <span class="candle-change volume-change"></span></span></p><div class="reference"></div></div><canvas tabindex="0"></canvas>
+<canvas class="oscillator" role="img" aria-label="오른쪽 차트 MACD (12, 26, 9)"></canvas>
+<canvas class="oscillator" role="img" aria-label="오른쪽 차트 RSI (14)"></canvas></article>
+</div>
+<footer>
+<span><a href="https://developers.binance.com/en/docs/products/spot/rest-api" target="_blank" rel="noopener">Binance 현물</a> · USDT · 3초마다 자동 갱신</span>
+<span>마지막 업데이트 <time id="updated">—</time> (KST)</span>
+<span id="status" role="status"></span>
+<button id="refresh">새로고침</button>
+</footer>
+</main>
+<dialog class="ma-dialog" id="ma-settings" aria-labelledby="ma-settings-title">
+<h2 id="ma-settings-title">이동평균선 설정</h2>
+<form id="ma-settings-form">
+<div id="ma-settings-rows"></div>
+<div class="ma-actions"><button type="button" id="ma-cancel">취소</button><button type="submit">적용</button></div>
+</form>
+</dialog>
+<script src="order-block.js"></script>
+<script src="oscillators.js"></script>
+<script src="cci.js"></script>
+<script src="vwap.js"></script>
+<script>
+const pairs = [['1w','4h'], ['1d','1h'], ['4h','15m'], ['1h','5m']]
+const extendedIntervals = {'1w':['1d'],'1d':['4h','1h'],'4h':['1h','30m'],'1h':['30m']}
+const labels = {'1w':'주봉','1d':'일봉','4h':'4시간봉','1h':'1시간봉','30m':'30분봉','15m':'15분봉','5m':'5분봉'}
+const menu = document.querySelector('#pair')
+const leftCandleCount = document.querySelector('#left-candle-count')
+const leftChartRatio = document.querySelector('#left-chart-ratio')
+const rightChartRatio = document.querySelector('#right-chart-ratio')
+const chartGrid = document.querySelector('.grid')
+const portraitPhoneLayout = matchMedia('(max-width:780px) and (orientation:portrait) and (pointer:coarse)')
+const status = document.querySelector('#status')
+const updated = document.querySelector('#updated')
+const vwapToggle = document.querySelector('#vwap-toggle')
+const cciToggle = document.querySelector('#cci-toggle')
+const orderBlockToggle = document.querySelector('#order-block')
+const extendedOrderBlockToggle = document.querySelector('#extended-order-block')
+const extendedOrderBlocks = new Map()
+const dailyValues = Object.fromEntries(['volume','open','high','low','close'].map(key =>
+  [key,document.querySelector('#day-'+key)]
+))
+const dailyChanges = Object.fromEntries(['volume','close'].map(key =>
+  [key,document.querySelector('#day-'+key+'-change')]
+))
+const refreshInterval = 3000
+const indicatorWarmup = 200
+const movingAverageStyles = [[10,'#a04900',1.4],[20,'#087966',1.4],[50,'#2856b3',1.4],[200,'#833c9e',1.4]]
+const maStorageKey = 'crt-moving-average-styles'
+
+function restoreMovingAverageStyles() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(maStorageKey))
+    if (!Array.isArray(saved)) return
+    for (const style of movingAverageStyles) {
+      const entry = saved.find(item => Array.isArray(item) && item[0] === style[0])
+      if (!entry) continue
+      if (typeof entry[1] === 'string' && /^#[0-9a-f]{6}$/i.test(entry[1])) style[1] = entry[1]
+      if (typeof entry[2] === 'number' && Number.isFinite(entry[2]) && entry[2] >= 0.5 && entry[2] <= 8) style[2] = entry[2]
+    }
+  } catch {
+    // Browsers may block storage or retain malformed data.
+  }
+}
+restoreMovingAverageStyles()
+const buttons = [...document.querySelectorAll('[data-coin]')]
+const panels = [...document.querySelectorAll('article')].map(article => ({
+  title: article.querySelector('h2'), dateLabel: article.querySelector('.candle-date'),
+  nextCandle: article.querySelector('.next-candle'),
+  readout: article.querySelector('.candle-values'),
+  prices: article.querySelector('.candle-prices'), closeChange: article.querySelector('.close-change'),
+  volume: article.querySelector('.candle-volume'), volumeChange: article.querySelector('.volume-change'),
+  canvas: article.querySelector('canvas'), reference: article.querySelector('.reference'),
+  oscillatorCanvases: [...article.querySelectorAll('.oscillator')], oscillators: [], movingAverages: [],
+  rows: [], hover: null, message: '', previous: null, orderBlocks: [], orderHistory: null
+}))
+const seoulClock = new Intl.DateTimeFormat('en-US', {
+  timeZone:'Asia/Seoul', month:'numeric', day:'numeric', hour:'numeric', minute:'2-digit', hourCycle:'h23'
+})
+
+function formatTimestamp(timestamp, dateOnly = false) {
+  const parts = Object.fromEntries(seoulClock.formatToParts(timestamp).map(({type,value}) => [type,value]))
+  const date = parts.month+'/'+parts.day
+  return dateOnly ? date : date+' '+Number(parts.hour)+':'+parts.minute
+}
+
+function formatCountdown(milliseconds) {
+  const seconds = Math.max(0,Math.ceil(milliseconds/1000))
+  const hours = Math.floor(seconds/3600)
+  const minutes = Math.floor(seconds/60)%60
+  return [hours,minutes,seconds%60].map(value => String(value).padStart(2,'0')).join(':')
+}
+
+function updateCountdown() {
+  const now = Date.now()
+  for (const {rows,nextCandle} of panels) {
+    const latest = rows.at(-1)
+    nextCandle.hidden = !latest
+    if (latest) nextCandle.textContent = ' · 다음 봉 '+formatCountdown(latest.closeTime+1-now)
+  }
+}
+let coin = 'BTC'
+let activeRequest
+let lastUpdated = 0
+let displayedCandleCount = Number(leftCandleCount.defaultValue)
+
+function readChartSetting(input, fallback) {
+  const value = Number.isFinite(input.valueAsNumber) ? Math.round(input.valueAsNumber) : fallback
+  return Math.max(Number(input.min),Math.min(Number(input.max),value))
+}
+
+function updateChartRatio(edited, other, value) {
+  other.value = 100-value
+  const left = edited === leftChartRatio ? value : 100-value
+  const right = 100-left
+  chartGrid.style.setProperty('--left-chart',left+'fr')
+  chartGrid.style.setProperty('--right-chart',right+'fr')
+}
+
+function applyLayoutDefaults() {
+  const isPortraitPhone = portraitPhoneLayout.matches
+  const leftRatio = isPortraitPhone ? 50 : 70
+  displayedCandleCount = isPortraitPhone ? 80 : 100
+  leftCandleCount.value = displayedCandleCount
+  leftChartRatio.value = leftRatio
+  updateChartRatio(leftChartRatio,rightChartRatio,leftRatio)
+}
+
+const palette = {
+  grid:'#edf0f3', axis:'#d5dae1', label:'#434b58', up:'#26a69a', down:'#ef5350',
+  upVolume:'rgba(38,166,154,.35)', downVolume:'rgba(239,83,80,.35)',
+  crosshair:'#818794', tag:'#2a2e39',
+  high:'#c52636', low:'#2358ac', current:'#f1f7fb', boundary:'#53677e'
+}
+const wholeNumber = new Intl.NumberFormat('en-US',{maximumFractionDigits:0})
+
+function formatVolume(volume) {
+  return wholeNumber.format(volume)
+}
+function priceFormatter(ceiling) {
+  const digits = ceiling < 10 ? 4 : 2
+  return new Intl.NumberFormat('en-US',{minimumFractionDigits:digits,maximumFractionDigits:digits}).format
+}
+const percentFormat = new Intl.NumberFormat('en-US',{
+  style:'percent', minimumFractionDigits:2, maximumFractionDigits:2, signDisplay:'exceptZero'
+})
+
+function relativeChange(value, previous) {
+  return previous > 0 ? (value-previous)/previous : null
+}
+
+function displayChange(element, rate, parentheses = false) {
+  const text = rate === null ? '—' : percentFormat.format(rate)
+  element.textContent = parentheses ? '('+text+')' : rate === null ? '' : text
+  element.dataset.direction = rate > 0 ? 'up' : rate < 0 ? 'down' : ''
+}
+function renderDaily(rows) {
+  const today = rows.at(-1)
+  const yesterday = rows.at(-2)
+  const price = priceFormatter(Math.max(...rows.map(row => row.high)))
+  for (const [key,element] of Object.entries(dailyValues)) {
+    element.textContent = !today ? '—' : key === 'volume'
+      ? formatVolume(today.volume) : price(today[key])
+  }
+  for (const [key,element] of Object.entries(dailyChanges)) {
+    const rate = today ? relativeChange(today[key],yesterday?.[key]) : null
+    displayChange(element,rate)
+    element.title = key === 'volume'
+      ? '오늘 누적 거래량과 전일 전체 거래량 비교' : '오늘 진행 중인 종가와 전일 종가 비교'
+  }
+}
+
+function drawAxisTag(ctx, text, x, y, width, background) {
+  ctx.fillStyle = background
+  ctx.fillRect(x,y,width,18)
+  ctx.fillStyle = '#fff'
+  ctx.textAlign = 'center'
+  ctx.fillText(text,x+width/2,y+13)
+  ctx.textAlign = 'start'
+}
+
+function calculateMovingAverages(history, visibleCount) {
+  return movingAverageStyles.map(([period,color,width]) => {
+    let sum = 0
+    const values = history.map(({close},index) => {
+      sum += close
+      if (index >= period) sum -= history[index-period].close
+      return index+1 < period ? null : sum/period
+    }).slice(-visibleCount)
+    return {period,color,width,values}
+  })
+}
+
+function drawMovingAverages(ctx, series, x, y) {
+  for (const {period,color,width,values} of series) {
+    const style = movingAverageStyles.find(item => item[0] === period)
+    ctx.strokeStyle = style?.[1] ?? color
+    ctx.lineWidth = style?.[2] ?? width
+    ctx.beginPath()
+    let started = false
+    values.forEach((value,index) => {
+      if (value === null) return
+      if (started) ctx.lineTo(x(index),y(value))
+      else ctx.moveTo(x(index),y(value))
+      started = true
+    })
+    ctx.stroke()
+  }
+  ctx.lineWidth = 1
+}
+
+function draw(panel) {
+  const {canvas, rows, hover, dateLabel, readout, previous, movingAverages} = panel
+  const showPriceLabels = panel === panels[0]
+  const width = canvas.clientWidth
+  const height = canvas.clientHeight
+  const plot = {left:12, right:width-(showPriceLabels ? 78 : 6), top:20, bottom:Math.round(height*0.71)}
+  const volumeTop = plot.bottom+29
+  const volumeBottom = height-34
+  const plotWidth = plot.right-plot.left
+  const dpr = window.devicePixelRatio || 1
+  canvas.width = Math.round(width*dpr)
+  canvas.height = Math.round(height*dpr)
+  const ctx = canvas.getContext('2d')
+  ctx.scale(dpr,dpr)
+  ctx.font = '11px system-ui, sans-serif'
+  if (!rows.length) {
+    ctx.fillStyle = palette.label
+    ctx.textAlign = 'center'
+    ctx.fillText(panel.message, width/2, height/2)
+    dateLabel.textContent = panel.message
+    readout.hidden = true
+    drawOscillators(panel)
+    return
+  }
+  const vwap = panel === panels[0] && vwapToggle.checked ? panel.vwap ?? [] : []
+  const averages = [
+    ...movingAverages.flatMap(series => series.values),
+    ...vwap.filter(Boolean).map(point => point.value)
+  ].filter(value => value !== null)
+  const floor = Math.min(previous?.low ?? Infinity,...rows.map(row => row.low),...averages)
+  const candleCeiling = Math.max(previous?.high ?? -Infinity,...rows.map(row => row.high))
+  const ceiling = Math.max(candleCeiling,...averages)
+  const span = Math.max(ceiling-floor, ceiling*0.001)
+  const low = floor - span*0.08
+  const high = ceiling + span*0.08
+  const maxVolume = Math.max(...rows.map(row => row.volume))
+  const y = price => plot.bottom - (price-low)/(high-low)*(plot.bottom-plot.top)
+  const step = plotWidth/rows.length
+  const x = i => plot.left + step*(i+0.5)
+  const price = priceFormatter(candleCeiling)
+  const index = hover === null ? rows.length-1 : Math.max(0,Math.min(rows.length-1,hover))
+  const candle = rows[index]
+  const latest = rows[rows.length-1]
+  const latestY = y(latest.close)
+  const latestColor = latest.close >= latest.open ? palette.up : palette.down
+  const firstCurrent = previous ? rows.findIndex(row => row.time >= panel.currentStart) : -1
+  const boundaryX = firstCurrent === -1 ? plot.right : plot.left+step*firstCurrent
+  if (firstCurrent > 0) {
+    ctx.fillStyle = palette.current
+    ctx.fillRect(boundaryX,plot.top,plot.right-boundaryX,volumeBottom-plot.top)
+  }
+  const visibleIntervals = new Set(extendedOrderBlockToggle.checked ? extendedIntervals[panels[0].interval] : [])
+  if (orderBlockToggle.checked) visibleIntervals.add(panel.interval)
+  for (const interval of visibleIntervals) {
+    const chart = panels.find(item => item.interval === interval)
+    const zones = chart?.orderBlocks ?? extendedOrderBlocks.get(interval)?.zones
+    if (zones?.length) drawOrderBlocks(ctx,zones,rows,plot,step,y,labels[interval],formatVolume)
+  }
+  for (let i=0; i<=5; i++) {
+    const value = low + (high-low)*i/5
+    const line = y(value)
+    ctx.fillStyle = palette.grid
+    ctx.fillRect(plot.left,line,plotWidth,1)
+    if (showPriceLabels) {
+      ctx.fillStyle = palette.label
+      ctx.fillText(price(value),plot.right+7,line+4)
+    }
+  }
+  ctx.fillStyle = palette.axis
+  ctx.fillRect(plot.left,volumeTop-1,plotWidth,1)
+  ctx.fillRect(plot.left,volumeBottom,width-plot.left,1)
+  if (showPriceLabels) ctx.fillRect(plot.right,0,1,volumeBottom)
+  ctx.fillStyle = palette.label
+  ctx.fillText('거래량 ('+coin+')',plot.left,volumeTop-6)
+  if (showPriceLabels) {
+    ctx.fillText(formatVolume(maxVolume),plot.right+7,volumeTop+4,width-plot.right-10)
+  } else {
+    ctx.textAlign = 'right'
+    ctx.fillText(formatVolume(maxVolume),plot.right-3,volumeTop-6,Math.max(20,plotWidth/2))
+    ctx.textAlign = 'start'
+  }
+
+  const labelCount = Math.min(rows.length,width > 540 ? 5 : width > 375 ? 3 : 2)
+  const dateOnly = ['1w','1d'].includes(panel.interval)
+  ctx.textAlign = 'center'
+  for (let i=0; i<labelCount; i++) {
+    const index = Math.min(rows.length-1,Math.floor(rows.length*(i+0.35)/labelCount))
+    const line = x(index)
+    ctx.fillStyle = palette.grid
+    ctx.fillRect(line,plot.top,1,plot.bottom-plot.top)
+    ctx.fillStyle = palette.label
+    const timeLabel = formatTimestamp(rows[index].time,dateOnly)
+    const halfLabel = ctx.measureText(timeLabel).width/2
+    const labelX = Math.max(plot.left+halfLabel,Math.min(line,plot.right-halfLabel))
+    ctx.fillText(timeLabel,labelX,height-13,plotWidth)
+  }
+  ctx.textAlign = 'start'
+  const body = Math.max(1,Math.min(15,Math.floor(step*0.76)))
+  rows.forEach(({open,high,low,close,volume},i) => {
+    const mid = x(i)
+    const rising = close >= open
+    ctx.fillStyle = rising ? palette.up : palette.down
+    ctx.fillRect(mid-0.5,y(high),1,Math.max(1,y(low)-y(high)))
+    ctx.fillRect(mid-body/2,y(Math.max(open,close)),body,Math.max(1,Math.abs(y(open)-y(close))))
+    const volumeHeight = maxVolume > 0 ? volume/maxVolume*(volumeBottom-volumeTop) : 0
+    ctx.fillStyle = rising ? palette.upVolume : palette.downVolume
+    ctx.fillRect(mid-body/2,volumeBottom-volumeHeight,body,volumeHeight)
+  })
+  drawMovingAverages(ctx,movingAverages,x,y)
+  if (vwap.length) drawSessionVwap(ctx,vwap,x,y)
+  ctx.strokeStyle = latestColor
+  ctx.setLineDash([4,3])
+  ctx.beginPath()
+  ctx.moveTo(plot.left,latestY)
+  ctx.lineTo(plot.right,latestY)
+  ctx.stroke()
+  if (showPriceLabels && (hover === null || Math.abs(y(candle.close)-latestY) >= 19)) {
+    const tagColor = latest.close >= latest.open ? '#08796e' : '#c53d3b'
+    drawAxisTag(ctx,price(latest.close),plot.right+1,latestY-9,width-plot.right-1,tagColor)
+  }
+  if (previous) {
+    ctx.strokeStyle = palette.boundary
+    ctx.lineWidth = 1.5
+    ctx.setLineDash([2,4])
+    ctx.beginPath()
+    for (const edge of [plot.left,boundaryX]) {
+      ctx.moveTo(edge,plot.top)
+      ctx.lineTo(edge,volumeBottom)
+    }
+    ctx.stroke()
+    ctx.lineWidth = 2
+    ctx.setLineDash([])
+    for (const [level,color] of [[previous.high,palette.high],[previous.low,palette.low]]) {
+      ctx.strokeStyle = color
+      ctx.beginPath()
+      ctx.moveTo(plot.left,y(level))
+      ctx.lineTo(plot.right,y(level))
+      ctx.stroke()
+    }
+    ctx.lineWidth = 1
+  }
+  if (hover !== null) {
+    const cursorX = x(index)
+    const cursorY = y(candle.close)
+    ctx.strokeStyle = palette.crosshair
+    ctx.setLineDash([4,4])
+    ctx.beginPath()
+    ctx.moveTo(cursorX,plot.top)
+    ctx.lineTo(cursorX,volumeBottom)
+    ctx.moveTo(plot.left,cursorY)
+    ctx.lineTo(plot.right,cursorY)
+    ctx.stroke()
+    if (showPriceLabels) {
+      drawAxisTag(ctx,price(candle.close),plot.right+1,cursorY-9,width-plot.right-1,palette.tag)
+    }
+    const timeLabel = formatTimestamp(candle.time)
+    const tagWidth = Math.ceil(ctx.measureText(timeLabel).width)+14
+    const tagLeft = Math.max(plot.left,Math.min(cursorX-tagWidth/2,plot.right-tagWidth))
+    drawAxisTag(ctx,timeLabel,tagLeft,volumeBottom+7,tagWidth,palette.tag)
+  }
+  dateLabel.textContent = formatTimestamp(candle.time)
+  const priorCandle = rows[index-1] ?? panel.priorCandle
+  readout.hidden = false
+  panel.prices.textContent = '시 '+price(candle.open)+'   고 '+price(candle.high)+'   저 '+price(candle.low)+'   종 '+price(candle.close)
+  panel.volume.textContent = '거래량 '+formatVolume(candle.volume)
+  displayChange(panel.closeChange,relativeChange(candle.close,priorCandle?.close),true)
+  displayChange(panel.volumeChange,relativeChange(candle.volume,priorCandle?.volume),true)
+  panel.plot = {left:plot.left,step,showPriceLabels}
+  drawOscillators(panel)
+}
+
+function displayReference(panel, previous) {
+  panel.reference.replaceChildren()
+  if (!previous) return
+  const digits = previous.high < 10 ? 4 : 2
+  for (const [label,value] of [['직전 봉 고가',previous.high],['직전 봉 저가',previous.low]]) {
+    const item = document.createElement('span')
+    const price = value.toLocaleString('en-US',{minimumFractionDigits:digits,maximumFractionDigits:digits})
+    item.textContent = label+' '+price
+    panel.reference.append(item)
+  }
+}
+
+async function fetchCandles(symbol, interval, signal, range = {}) {
+  const query = new URLSearchParams({symbol,interval,limit:'100',...range})
+  const response = await fetch('https://data-api.binance.vision/api/v3/klines?'+query,{
+    signal, cache:'no-store'
+  })
+  if (!response.ok) throw Error('HTTP '+response.status)
+  const data = await response.json()
+  if (!Array.isArray(data) || !data.length) throw Error('Missing candles')
+  return data.map(row => {
+    const [time,open,high,low,close,volume,closeTime] = row.map(Number)
+    return {time,open,high,low,close,volume,closeTime}
+  })
+}
+
+async function refreshOrderBlocks(panel, symbol, timestamp, request) {
+  const {rows,interval} = panel
+  const start = rows[0].time
+  let history = panel.orderHistory
+  if (history?.start !== start) {
+    const recent = await fetchCandles(symbol,interval,request.signal,{limit:'1000',endTime:start-1})
+    const older = recent.length === 1000
+      ? await fetchCandles(symbol,interval,request.signal,{limit:'800',endTime:recent[0].time-1})
+      : []
+    if (activeRequest !== request) return
+    history = {start,rows:[...older,...recent]}
+    panel.orderHistory = history
+  }
+  if (activeRequest !== request) return
+  panel.orderBlocks = calculateOrderBlocks([...history.rows,...rows],timestamp)
+}
+
+async function refreshExtendedOrderBlocks(interval, symbol, timestamp, request) {
+  const cached = extendedOrderBlocks.get(interval)
+  if (cached?.until > timestamp) return
+  const recent = (await fetchCandles(symbol,interval,request.signal,{limit:'1000'}))
+    .filter(row => row.time <= timestamp)
+  if (!recent.length || activeRequest !== request) return
+  const older = recent.length >= 999
+    ? await fetchCandles(symbol,interval,request.signal,{limit:'800',endTime:recent[0].time-1})
+    : []
+  if (activeRequest !== request) return
+  extendedOrderBlocks.set(interval,{
+    until:recent.at(-1).closeTime+1,
+    zones:calculateOrderBlocks([...older,...recent],timestamp)
+  })
+}
+
+async function load(reset = false) {
+  if (activeRequest && !reset) return
+  activeRequest?.abort()
+  const request = new AbortController()
+  activeRequest = request
+  const timeout = setTimeout(() => request.abort(),12000)
+  const selected = coin
+  const intervals = pairs[Number(menu.value)]
+  const candleCount = displayedCandleCount
+  const asOf = Date.now()
+  if (reset) {
+    extendedOrderBlocks.clear()
+    lastUpdated = 0
+    updated.textContent = '—'
+    updated.removeAttribute('datetime')
+    status.textContent = '시세 조회 중…'
+    renderDaily([])
+    panels.forEach((panel,index) => {
+      panel.interval = intervals[index]
+      panel.title.textContent = selected+'/USDT · '+labels[panel.interval]
+      panel.canvas.setAttribute('aria-label',panel.title.textContent+' 캔들 차트. 방향키로 봉을 확인하세요.')
+      panel.rows = []
+      panel.oscillators = []
+      panel.cci = []
+      panel.movingAverages = []
+      panel.vwap = []
+      panel.hover = null
+      panel.previous = null
+      panel.orderBlocks = []
+      panel.orderHistory = null
+      displayReference(panel,null)
+      panel.message = '캔들 데이터를 불러오는 중…'
+      draw(panel)
+    })
+    updateCountdown()
+  }
+  const symbol = selected+'USDT'
+  const dailyRequest = intervals[0] === '1d' ? Promise.resolve() : fetchCandles(symbol,'1d',request.signal,{limit:'80'})
+    .catch(() => [])
+    .then(rows => {
+      if (activeRequest === request) renderDaily(rows.filter(row => row.time <= asOf))
+    })
+  try {
+    const left = (await fetchCandles(symbol,intervals[0],request.signal,{
+      limit:String(candleCount+indicatorWarmup+1)
+    }))
+      .filter(candle => candle.time <= asOf)
+    if (activeRequest !== request) return
+    if (left.length < 2) throw Error('Missing reference candle')
+    const [previous,current] = left.slice(-2)
+    const endTime = Math.min(current.closeTime,asOf)
+    const rightInterval = intervals[1]
+    const rightIntervalMs = Number(rightInterval.slice(0,-1))*(rightInterval.endsWith('h') ? 3600000 : 60000)
+    const rightWithPrior = (await fetchCandles(symbol,rightInterval,request.signal,{
+      startTime:previous.time-rightIntervalMs*indicatorWarmup,endTime,
+      limit:String(indicatorWarmup+100)
+    })).filter(candle => candle.time <= endTime)
+    const right = rightWithPrior.filter(candle => candle.time >= previous.time && candle.time <= endTime)
+    if (activeRequest !== request) return
+    if (!right.length) throw Error('Missing candles in range')
+    panels[0].rows = left.slice(-candleCount)
+    panels[0].oscillators = calculateOscillators(left,panels[0].rows.length)
+    panels[0].cci = calculateCci(left,panels[0].rows.length)
+    panels[0].movingAverages = calculateMovingAverages(left,panels[0].rows.length)
+    panels[0].vwap = calculateSessionVwap(left,panels[0].rows.length)
+    panels[0].priorCandle = left.at(-candleCount-1)
+    if (intervals[0] === '1d') renderDaily(panels[0].rows)
+    panels[1].rows = right
+    panels[1].oscillators = calculateOscillators(rightWithPrior,right.length)
+    panels[1].cci = calculateCci(rightWithPrior,right.length)
+    panels[1].movingAverages = calculateMovingAverages(rightWithPrior,right.length)
+    panels[1].priorCandle = rightWithPrior.findLast(candle => candle.time < previous.time)
+    updateCountdown()
+    panels[1].previous = previous
+    panels[1].currentStart = current.time
+    displayReference(panels[1],previous)
+    panels.forEach(draw)
+    const now = new Date()
+    lastUpdated = now.getTime()
+    updated.dateTime = now.toISOString()
+    updated.textContent = formatTimestamp(now)
+    status.textContent = ''
+    if (orderBlockToggle.checked || extendedOrderBlockToggle.checked) {
+      const extra = extendedOrderBlockToggle.checked ? extendedIntervals[intervals[0]] : []
+      const native = panels.filter(panel => orderBlockToggle.checked || extra.includes(panel.interval))
+      const additional = extra.filter(interval => !intervals.includes(interval))
+      const results = await Promise.allSettled([
+        ...native.map(panel => refreshOrderBlocks(panel,symbol,asOf,request)),
+        ...additional.map(interval => refreshExtendedOrderBlocks(interval,symbol,asOf,request))
+      ])
+      if (activeRequest !== request) return
+      panels.forEach(draw)
+      if ((orderBlockToggle.checked || extendedOrderBlockToggle.checked) && results.some(result => result.status === 'rejected')) {
+        status.textContent = 'Order Block 데이터 조회 실패 · 자동으로 다시 시도합니다.'
+      }
+    }
+  } catch {
+    if (activeRequest !== request) return
+    request.abort()
+    status.textContent = '시세 연결 실패 · 자동으로 다시 시도합니다.'
+    panels.filter(panel => !panel.rows.length).forEach(panel => {
+      panel.message = '캔들을 불러오지 못했습니다.'
+      draw(panel)
+    })
+  } finally {
+    await dailyRequest
+    clearTimeout(timeout)
+    if (activeRequest === request) activeRequest = null
+  }
+}
+
+const legend = document.querySelector('.moving-averages')
+const maDialog = document.querySelector('#ma-settings')
+const maRows = document.querySelector('#ma-settings-rows')
+for (const [period,color,width] of movingAverageStyles) {
+  const item = document.createElement('button')
+  item.type = 'button'
+  item.style.color = color
+  item.style.setProperty('--ma-width',width+'px')
+  item.textContent = 'SMA '+period
+  item.dataset.period = period
+  item.setAttribute('aria-haspopup','dialog')
+  item.setAttribute('aria-controls','ma-settings')
+  item.addEventListener('click',() => {
+    for (const [p,c,w] of movingAverageStyles) {
+      document.querySelector('#ma-color-'+p).value = c
+      document.querySelector('#ma-width-'+p).value = w
+    }
+    maDialog.showModal()
+    document.querySelector('#ma-color-'+period).focus()
+  })
+  legend.append(item)
+  const row = document.createElement('div')
+  row.className = 'ma-row'
+  row.innerHTML = '<span>SMA '+period+'</span>'+
+    '<label>색상<input type="color" id="ma-color-'+period+'" aria-label="SMA '+period+' 색상"></label>'+
+    '<label>굵기 (px)<input type="number" id="ma-width-'+period+'" min="0.5" max="8" step="0.1" required aria-label="SMA '+period+' 굵기"></label>'
+  maRows.append(row)
+}
+document.querySelector('#ma-cancel').addEventListener('click',() => maDialog.close())
+document.querySelector('#ma-settings-form').addEventListener('submit',event => {
+  event.preventDefault()
+  for (const style of movingAverageStyles) {
+    const period = style[0]
+    style[1] = document.querySelector('#ma-color-'+period).value
+    style[2] = document.querySelector('#ma-width-'+period).valueAsNumber
+    const item = legend.querySelector('[data-period="'+period+'"]')
+    item.style.color = style[1]
+    item.style.setProperty('--ma-width',style[2]+'px')
+  }
+  panels.forEach(draw)
+  try {
+    localStorage.setItem(maStorageKey,JSON.stringify(movingAverageStyles))
+  } catch {
+    status.textContent = '브라우저 저장 공간에 접근할 수 없어 스타일을 저장하지 못했습니다.'
+  }
+  maDialog.close()
+})
+for (const panel of panels) {
+  panel.cciCanvas = document.createElement('canvas')
+  panel.cciCanvas.className = 'cci-pane'
+  panel.cciCanvas.setAttribute('role','img')
+  panel.cciCanvas.setAttribute('aria-label','CCI (20)')
+  panel.oscillatorCanvases.at(-1).after(panel.cciCanvas)
+  new ResizeObserver(() => draw(panel)).observe(panel.canvas)
+  panel.canvas.addEventListener('pointermove',event => {
+    if (!panel.rows.length) return
+    panel.hover = Math.floor((event.offsetX-panel.plot.left)/panel.plot.step)
+    draw(panel)
+  })
+  for (const name of ['pointerleave','blur']) panel.canvas.addEventListener(name,() => {
+    panel.hover = null
+    draw(panel)
+  })
+  panel.canvas.addEventListener('keydown',event => {
+    if (!panel.rows.length || !['ArrowLeft','ArrowRight'].includes(event.key)) return
+    event.preventDefault()
+    const index = panel.hover ?? panel.rows.length-1
+    panel.hover = Math.max(0,Math.min(panel.rows.length-1,index+(event.key==='ArrowLeft' ? -1 : 1)))
+    draw(panel)
+  })
+}
+buttons.forEach(button => button.addEventListener('click',() => {
+  if (coin === button.dataset.coin) return
+  coin = button.dataset.coin
+  buttons.forEach(item => item.setAttribute('aria-pressed',String(item===button)))
+  load(true)
+}))
+menu.addEventListener('change',() => load(true))
+vwapToggle.addEventListener('change',() => draw(panels[0]))
+cciToggle.addEventListener('change',() => panels.forEach(drawCci))
+leftCandleCount.addEventListener('change',() => {
+  displayedCandleCount = readChartSetting(leftCandleCount,displayedCandleCount)
+  leftCandleCount.value = displayedCandleCount
+  load()
+})
+for (const [edited,other] of [[leftChartRatio,rightChartRatio],[rightChartRatio,leftChartRatio]]) {
+  edited.addEventListener('input',() => {
+    if (edited.validity.valid && Number.isFinite(edited.valueAsNumber)) {
+      updateChartRatio(edited,other,edited.valueAsNumber)
+    }
+  })
+  edited.addEventListener('change',() => {
+    const value = readChartSetting(edited,100-other.valueAsNumber)
+    edited.value = value
+    updateChartRatio(edited,other,value)
+  })
+}
+for (const toggle of [orderBlockToggle,extendedOrderBlockToggle]) {
+  toggle.addEventListener('change',() => {
+    panels.forEach(draw)
+    if (toggle.checked) load()
+  })
+}
+document.querySelector('#refresh').addEventListener('click',() => load())
+setInterval(() => {
+  if (!document.hidden) load()
+},refreshInterval)
+setInterval(updateCountdown,1000)
+document.addEventListener('visibilitychange',() => {
+  if (!document.hidden) updateCountdown()
+  if (!document.hidden && Date.now()-lastUpdated >= refreshInterval) load()
+})
+applyLayoutDefaults()
+portraitPhoneLayout.addEventListener('change',() => {
+  applyLayoutDefaults()
+  load()
+})
+load(true)
+</script>
+</body>
+</html>
