@@ -9,7 +9,7 @@
 :root{color-scheme:light;--bg:#fff;--card:#fff;--line:#dce4ec;--muted:#506075;--accent:#087966;--ref-high:#c52636;--ref-low:#2358ac}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:#182538;font:15px/1.5 Inter,system-ui,sans-serif}
-.wrap{width:min(1500px,calc(100% - 48px));margin:auto}
+.wrap{width:100%;margin:0}
 main{padding-block:22px}
 .controls{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;overflow-x:auto;padding:4px}
 .symbols{display:flex;flex:none;gap:5px}
@@ -62,7 +62,7 @@ canvas{display:block;width:100%;height:clamp(320px,53vh,580px);outline-offset:-3
 .cci-pane[hidden]{display:none}
 footer{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;color:var(--muted);font-size:12px}
 a{color:inherit}
-@media(max-width:780px){.wrap{width:calc(100% - 28px)}main{padding-block:16px}}
+@media(max-width:780px){main{padding-block:16px}}
 @media(max-width:780px) and (orientation:portrait) and (pointer:coarse){.grid{grid-template-columns:1fr}}
 @media(max-width:460px){.controls{gap:4px}.symbols{gap:3px}.controls button,.controls select{font-size:10px;padding-inline:4px}}
 @media(max-width:370px){.controls button,.controls select{font-size:9px;padding-inline:2px}}
@@ -782,3 +782,4 @@ load(true)
 </script>
 </body>
 </html>
+
