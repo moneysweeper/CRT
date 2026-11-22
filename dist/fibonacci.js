@@ -26,7 +26,7 @@ function drawFibonacci(ctx, points, x, y) {
   })
   for (let index = points.length-1; index >= 0; index--) ctx.lineTo(x(index),y(points[index].lower))
   ctx.closePath()
-  ctx.fillStyle = 'rgba(255,235,59,0.1)'
+  ctx.fillStyle = 'rgba(255,235,59,0.3)'
   ctx.fill()
   ctx.strokeStyle = 'rgba(255,235,59,0.2)'
   ctx.lineWidth = 1
@@ -40,3 +40,4 @@ function drawFibonacci(ctx, points, x, y) {
   }
   ctx.restore()
 }
+
