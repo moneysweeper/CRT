@@ -39,3 +39,12 @@ NWOG 3개를 표시합니다. 최대 3,000봉의 차트 시간봉 데이터를 �
 소스 기본값에서 꺼진 BPR, IFVG, NDOG, Fibonacci, Killzones,
 Displacement 마커 및 과거 극성 변경 라벨은 비활성 상태입니다.
 TradingView의 Pine 실행 환경과 표시를 직접 대조한 결과는 포함하지 않습니다.
+
+## Fibonacci Golden Wave
+
+dist/fibonacci.js는 fluxchart의 사용자 제공 Pine v5 소스를 JavaScript 및 Canvas로 변환한 파일입니다.
+© fluxchart. Mozilla Public License 2.0 고지를 유지합니다.
+https://mozilla.org/MPL/2.0/
+
+기본값은 Swing Range 20, Use Pivots false, Golden Zone 0.5~0.618이며,
+현재 봉을 포함한 최근 20봉의 최고·최저가로 매 봉 계산합니다.
