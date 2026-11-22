@@ -173,6 +173,8 @@ function drawOscillators(panel) {
   ]
 
   oscillatorCanvases.forEach((canvas,paneIndex) => {
+    canvas.hidden = paneIndex === 1 && !rsiToggle.checked
+    if (canvas.hidden) return
     const width = canvas.clientWidth
     const height = canvas.clientHeight
     const dpr = window.devicePixelRatio || 1
