@@ -51,7 +51,7 @@ button:hover,select:hover{border-color:var(--accent)}
 .ma-row input[type=number]{font:inherit;padding:4px;border:1px solid var(--line);border-radius:4px}
 .ma-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
 .grid{display:grid;grid-template-columns:minmax(0,var(--left-chart,1fr)) minmax(0,var(--right-chart,1fr));gap:0}
-article{min-width:0;background:var(--card);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+article{display:grid;grid-template-rows:subgrid;grid-row:span 5;min-width:0;background:var(--card);border:1px solid var(--line);border-radius:6px;overflow:hidden}
 .chart-head{padding:12px 14px 10px;border-bottom:1px solid var(--line)}
 h2{margin:0;font-size:16px;font-weight:650}
 .readout{font:12px/1.5 Inter,system-ui,sans-serif;font-variant-numeric:tabular-nums;color:var(--muted);margin:5px 0 0;min-height:36px;white-space:pre-line}
@@ -64,7 +64,7 @@ canvas{display:block;width:100%;height:clamp(320px,53vh,580px);outline-offset:-3
 footer{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;color:var(--muted);font-size:12px}
 a{color:inherit}
 @media(max-width:780px){main{padding-block:16px}}
-@media(max-width:780px) and (orientation:portrait) and (pointer:coarse){.grid{grid-template-columns:1fr}}
+@media(max-width:780px) and (orientation:portrait) and (pointer:coarse){.grid{grid-template-columns:1fr}article{display:block;grid-row:auto}}
 @media(max-width:460px){.controls{gap:4px}.symbols{gap:3px}.controls button,.controls select{font-size:10px;padding-inline:4px}}
 @media(max-width:370px){.controls button,.controls select{font-size:9px;padding-inline:2px}}
 </style>
