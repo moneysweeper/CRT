@@ -48,3 +48,16 @@ https://mozilla.org/MPL/2.0/
 
 기본값은 Swing Range 20, Use Pivots false, Golden Zone 0.5~0.618이며,
 현재 봉을 포함한 최근 20봉의 최고·최저가로 매 봉 계산합니다.
+
+## RSI (Kernel Optimized)
+
+dist/rsi-optimized.js는 Flux Charts의 사용자 제공 Pine v5 소스를 JavaScript 및 Canvas로 변환한 파일입니다.
+© Flux Charts®. Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International.
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+기본 설정은 RSI 14 (종가), 고저 피벗 21, Gaussian KDE, bandwidth 2.71828,
+100 bins, Medium 임계값 0.25, Sum 모드, 라벨 간격 8봉입니다.
+최대 5,000봉을 사용해 각 차트 시간봉의 화살표·라벨·대시보드를 계산합니다.
+피벗은 오른쪽 21봉으로 확정하며, 화살표는 마감된 봉에 표시됩니다.
+확률 수치는 제공 소스의 KDE 누적 밀도 계산을 따릅니다.
+TradingView 실시간 화면과의 일치 여부는 직접 비교하지 않았습니다.
